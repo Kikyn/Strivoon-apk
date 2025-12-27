@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Strivoon Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { background: #0b1622; color: white; font-family: sans-serif; overflow-x: hidden; }
+        .movie-card { position: relative; transition: transform 0.3s; }
+        .badge-new { position: absolute; top: 5px; left: 5px; background: #e50914; color: white; font-size: 8px; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 10; text-transform: uppercase; }
+        #player-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="app-content" class="p-4">
+        <header class="mb-8">
+            <h1 class="text-3xl font-black italic text-red-600">STRIVOON</h1>
+        </header>
+
+        <div id="peliculas-row" class="mb-10">
+            <h2 class="text-sm font-bold uppercase tracking-widest mb-4 border-l-4 border-red-600 pl-2">Películas</h2>
+            <div id="lista-peliculas" class="flex gap-4 overflow-x-auto pb-4"></div>
+        </div>
+
+        <div id="series-row" class="mb-10">
+            <h2 class="text-sm font-bold uppercase tracking-widest mb-4 border-l-4 border-red-600 pl-2">Series</h2>
+            <div id="lista-series" class="flex gap-4 overflow-x-auto pb-4"></div>
+        </div>
+    </div>
+
+    <div id="player-overlay">
+        <button onclick="cerrarReproductor()" class="absolute top-5 left-5 z-[10000] bg-white/20 p-2 rounded-full text-white">✕</button>
+        <div id="video-container" class="w-full h-full flex items-center justify-center"></div>
+    </div>
+
+    <script>
+        // Configuración de Firebase
+        const firebaseConfig = { databaseURL: "https://strivoon-app-default-rtdb.firebaseio.com" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Cargar Datos
+        db.ref().on('value', snap => {
+            const data = snap.val();
+            renderContenido(data.peliculas, 'lista-peliculas', 'p');
+            renderContenido(data.series, 'lista-series', 's');
+        });
+
+        function renderContenido(items, elementId, tipo) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+            
+            for(let id in items) {
+                const item = items[id];
+                const card = document.createElement('div');
+                card.className = 'movie-card min-w-[120px] w-[120px]';
+                
+                // Etiquetas según tus instrucciones [cite: 2025-12-23]
+                let etiqueta = '';
+                if(tipo === 'p' && item.isNueva) etiqueta = '<span class="badge-new">Nueva</span>';
+                if(tipo === 's' && item.link) etiqueta = '<span class="badge-new">Nuevo Capítulo</span>';
+
+                card.innerHTML = `
+                    ${etiqueta}
+                    <img src="${item.poster}" class="rounded-xl shadow-lg mb-2" onclick="abrirVideo('${item.link}')">
+                    <p class="text-[10px] font-bold truncate">${item.title}</p>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        // Lógica del Reproductor (mp4 y m3u8) [cite: 2025-12-22]
+        function abrirVideo(url) {
+            const overlay = document.getElementById('player-overlay');
+            const container = document.getElementById('video-container');
+            overlay.style.display = 'block';
+
+            // Usamos un Sandbox para bloquear publicidad de Streamwish [cite: 2025-12-22]
+            container.innerHTML = `
+                <iframe src="${url}" 
+                    style="width:100%; height:100%; border:none;" 
+                    sandbox="allow-forms allow-scripts allow-same-origin" 
+                    allowfullscreen>
+                </iframe>`;
+        }
+
+        function cerrarReproductor() {
+            document.getElementById('player-overlay').style.display = 'none';
+            document.getElementById('video-container').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
